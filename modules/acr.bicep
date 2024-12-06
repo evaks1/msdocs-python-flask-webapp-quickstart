@@ -42,4 +42,4 @@ resource secretAdminPassword 'Microsoft.KeyVault/vaults/secrets@2021-10-01' = {
 }
 
 output registryName string = registry.name
-output registryLoginServer string = registry.properties.loginServer
+output registryLoginServer string = registry.loginServer
