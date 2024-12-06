@@ -2,10 +2,13 @@ param name string
 param location string
 param acrAdminUserEnabled bool
 
-// Key Vault params
-param adminCredentialsKeyVaultResourceId string
+@secure()
 param adminCredentialsKeyVaultSecretUserName string
+@secure()
 param adminCredentialsKeyVaultSecretUserPassword string
+
+// Key Vault Resource ID
+param adminCredentialsKeyVaultResourceId string
 
 resource registry 'Microsoft.ContainerRegistry/registries@2021-08-01-preview' = {
   name: name
@@ -13,28 +16,30 @@ resource registry 'Microsoft.ContainerRegistry/registries@2021-08-01-preview' = 
   sku: {
     name: 'Basic'
   }
-  adminUserEnabled: acrAdminUserEnabled
+  properties: {
+    adminUserEnabled: acrAdminUserEnabled
+  }
 }
 
-resource adminCredentialsKeyVault 'Microsoft.KeyVault/vaults@2023-02-01' existing = {
+resource keyVault 'Microsoft.KeyVault/vaults@2021-10-01' existing = {
   name: last(split(adminCredentialsKeyVaultResourceId, '/'))
 }
 
-resource secretAdminUserName 'Microsoft.KeyVault/vaults/secrets@2023-02-01' = {
+resource secretAdminUserName 'Microsoft.KeyVault/vaults/secrets@2021-10-01' = {
   name: adminCredentialsKeyVaultSecretUserName
-  parent: adminCredentialsKeyVault
+  parent: keyVault
   properties: {
     value: registry.listCredentials().username
   }
 }
 
-resource secretAdminPassword 'Microsoft.KeyVault/vaults/secrets@2023-02-01' = {
+resource secretAdminPassword 'Microsoft.KeyVault/vaults/secrets@2021-10-01' = {
   name: adminCredentialsKeyVaultSecretUserPassword
-  parent: adminCredentialsKeyVault
+  parent: keyVault
   properties: {
     value: registry.listCredentials().passwords[0].value
   }
 }
 
 output registryName string = registry.name
-output registryLoginServer string = registry.loginServer
+output registryLoginServer string = registry.properties.loginServer

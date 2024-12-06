@@ -6,10 +6,10 @@ on:
       - main
 
 env:
-  IMAGE_BASE_NAME: myapp
+  IMAGE_BASE_NAME: ElsAppImage
   KEY_VAULT_NAME: ${{ secrets.KEY_VAULT_NAME }}
-  KEY_VAULT_SECRET_NAME_ACR_USERNAME: acr-username
-  KEY_VAULT_SECRET_NAME_ACR_PASSWORD: acr-password
+  KEY_VAULT_SECRET_NAME_ACR_USERNAME: ElsACRUsername
+  KEY_VAULT_SECRET_NAME_ACR_PASSWORD: ElsACRPassword
 
 jobs:
   build-and-push:
@@ -23,31 +23,27 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Get docker registry credentials from Azure Key Vault
+      - name: Get Docker Registry Credentials from Azure Key Vault
         uses: azure/CLI@v1
         with:
           inlineScript: |
-            echo "REGISTRY_USERNAME=$(az keyvault secret show --name $KEY_VAULT_SECRET_NAME_ACR_USERNAME --vault-name $KEY_VAULT_NAME --query value -o tsv)" >> $GITHUB_ENV
-            echo "REGISTRY_PASSWORD=$(az keyvault secret show --name $KEY_VAULT_SECRET_NAME_ACR_PASSWORD --vault-name $KEY_VAULT_NAME --query value -o tsv)" >> $GITHUB_ENV
+            REGISTRY_USERNAME=$(az keyvault secret show --name $KEY_VAULT_SECRET_NAME_ACR_USERNAME --vault-name $KEY_VAULT_NAME --query value -o tsv)
+            REGISTRY_PASSWORD=$(az keyvault secret show --name $KEY_VAULT_SECRET_NAME_ACR_PASSWORD --vault-name $KEY_VAULT_NAME --query value -o tsv)
+            echo "REGISTRY_USERNAME=${REGISTRY_USERNAME}" >> $GITHUB_ENV
+            echo "REGISTRY_PASSWORD=${REGISTRY_PASSWORD}" >> $GITHUB_ENV
 
-      - name: ACR Login
-        run: |
-          az acr login --name $(az keyvault secret show --name acr-username --vault-name $KEY_VAULT_NAME --query value -o tsv)
-        shell: bash
-
-      - name: Set image version
+      - name: Set Image Version
         id: image-version
         run: echo "::set-output name=version::$(echo ${GITHUB_REF#refs/heads/})-$(date +'%Y.%m.%d.%H.%M')"
 
-      - name: Build and push image
+      - name: Build and Push Image
         working-directory: ./app
         run: |
-          REGISTRY=$(az keyvault secret show --name acr-username --vault-name $KEY_VAULT_NAME --query value -o tsv).azurecr.io
-          docker login $REGISTRY -u $REGISTRY_USERNAME -p $REGISTRY_PASSWORD
-          docker build . -t $REGISTRY/${{env.IMAGE_BASE_NAME}}:${{ steps.image-version.outputs.version }}
-          docker build . -t $REGISTRY/${{env.IMAGE_BASE_NAME}}:${{ github.ref_name }}-latest
-          docker push $REGISTRY/${{env.IMAGE_BASE_NAME}}:${{ steps.image-version.outputs.version }}
-          docker push $REGISTRY/${{env.IMAGE_BASE_NAME}}:${{ github.ref_name }}-latest
+          docker login ElsACR123.azurecr.io -u $REGISTRY_USERNAME -p $REGISTRY_PASSWORD
+          docker build . -t ElsACR123.azurecr.io/ElsAppImage:${{ steps.image-version.outputs.version }}
+          docker push ElsACR123.azurecr.io/ElsAppImage:${{ steps.image-version.outputs.version }}
+          docker build . -t ElsACR123.azurecr.io/ElsAppImage:latest
+          docker push ElsACR123.azurecr.io/ElsAppImage:latest
 
   deploy-to-webapp:
     runs-on: ubuntu-latest
@@ -56,10 +52,10 @@ jobs:
       - name: Azure Login
         uses: azure/login@v1
         with:
-          credentials: ${{ secrets.AZURE_CREDENTIALS }}
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Deploy to WebApp
         uses: azure/webapps-deploy@v3
         with:
-          app-name: "ELSWebApp"
-          images: "$(az keyvault secret show --name acr-username --vault-name $KEY_VAULT_NAME --query value -o tsv).azurecr.io/${{ env.IMAGE_BASE_NAME }}:${{ github.ref_name }}-latest"
+          app-name: "ElsWebApp"
+          images: "ElsACR123.azurecr.io/ElsAppImage:${{ steps.image-version.outputs.version }}"

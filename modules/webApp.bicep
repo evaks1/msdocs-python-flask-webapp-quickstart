@@ -12,32 +12,34 @@ param dockerRegistryServerUserName string
 @secure()
 param dockerRegistryServerPassword string
 
-var dockerAppSettings = {
-  DOCKER_REGISTRY_SERVER_URL: dockerRegistryServerUrl
-  DOCKER_REGISTRY_SERVER_USERNAME: dockerRegistryServerUserName
-  DOCKER_REGISTRY_SERVER_PASSWORD: dockerRegistryServerPassword
-}
-
-resource app 'Microsoft.Web/sites@2022-03-01' = {
+resource app 'Microsoft.Web/sites@2021-02-01' = {
   name: name
   location: location
   kind: kind
   properties: {
     serverFarmId: serverFarmResourceId
-    siteConfig: siteConfig
-  }
-}
-
-module app_appsettings 'config--appsettings/main.bicep' = if (!empty(appSettingsKeyValuePairs)) {
-  name: '${uniqueString(deployment().name, location)}-Site-Config-AppSettings'
-  params: {
-    appName: app.name
-    kind: kind
-    storageAccountResourceId: ''
-    appInsightResourceId: ''
-    setAzureWebJobsDashboard: false
-    appSettingsKeyValuePairs: union(appSettingsKeyValuePairs, dockerAppSettings)
-    enableDefaultTelemetry: false
+    siteConfig: {
+      linuxFxVersion: siteConfig.linuxFxVersion
+      appCommandLine: siteConfig.appCommandLine
+    }
+    appSettings: [
+      for (key, value) in appSettingsKeyValuePairs: {
+        name: key
+        value: value
+      }
+      {
+        name: 'DOCKER_REGISTRY_SERVER_URL'
+        value: dockerRegistryServerUrl
+      }
+      {
+        name: 'DOCKER_REGISTRY_SERVER_USERNAME'
+        value: dockerRegistryServerUserName
+      }
+      {
+        name: 'DOCKER_REGISTRY_SERVER_PASSWORD'
+        value: dockerRegistryServerPassword
+      }
+    ]
   }
 }
 

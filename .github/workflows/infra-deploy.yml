@@ -17,9 +17,9 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Deploy Infrastructure (Key Vault + ACR + ASP + WebApp + SQL)
+      - name: Deploy Infrastructure
         run: |
           az deployment group create \
-            --resource-group BCSAI2024-DEVOPS-STUDENTS-A-DEV  \
+            --resource-group BCSAI2024-DEVOPS-STUDENTS-A-DEV \
             --template-file main.bicep \
             --parameters main.parameters.json

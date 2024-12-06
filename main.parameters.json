@@ -6,34 +6,34 @@
         "value": "eastus"
       },
       "keyVaultName": {
-        "value": "ELSkeyvault123" 
+        "value": "ElsKeyVault123"
       },
       "acrName": {
-        "value": "ELSacr123"
+        "value": "ElsACR123"
       },
       "appServicePlanName": {
-        "value": "ELSASP"
+        "value": "ElsASP123"
       },
       "webAppName": {
-        "value": "ELSWebApp"
+        "value": "ElsWebApp"
       },
       "containerRegistryImageName": {
-        "value": "ELSapp"
+        "value": "ElsAppImage"
       },
       "containerRegistryImageVersion": {
         "value": "v1"
       },
       "sqlServerName": {
-        "value": "ELSsqlserver123"
+        "value": "ElsSQLServer123"
       },
       "sqlAdminUserName": {
-        "value": "ELSsqladminuser"
+        "value": "sqladmin"
       },
       "sqlAdminPassword": {
-        "value": "ELSComplexPassword123!"
+        "value": "ComplexPassword123!"
       },
       "databaseName": {
-        "value": "ELSdb"
+        "value": "ElsDatabase"
       }
     }
   }

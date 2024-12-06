@@ -2,7 +2,7 @@ param name string
 param location string
 param sku object
 
-resource appServicePlan 'Microsoft.Web/serverfarms@2022-03-01' = {
+resource appServicePlan 'Microsoft.Web/serverfarms@2021-02-01' = {
   name: name
   location: location
   sku: {

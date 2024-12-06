@@ -5,11 +5,15 @@ param sqlAdminUserName string
 param sqlAdminPassword string
 param databaseName string
 
-param adminCredentialsKeyVaultResourceId string
+@secure()
 param adminCredentialsKeyVaultSecretDbUserName string
+@secure()
 param adminCredentialsKeyVaultSecretDbPassword string
 
-resource sqlServer 'Microsoft.Sql/servers@2022-05-01-preview' = {
+// Key Vault Resource ID
+param adminCredentialsKeyVaultResourceId string
+
+resource sqlServer 'Microsoft.Sql/servers@2021-02-01-preview' = {
   name: sqlServerName
   location: location
   properties: {
@@ -19,8 +23,9 @@ resource sqlServer 'Microsoft.Sql/servers@2022-05-01-preview' = {
   tags: {}
 }
 
-resource sqlDb 'Microsoft.Sql/servers/databases@2022-05-01-preview' = {
-  name: '${sqlServerName}/${databaseName}'
+resource sqlDb 'Microsoft.Sql/servers/databases@2021-02-01-preview' = {
+  name: databaseName
+  parent: sqlServer
   location: location
   sku: {
     name: 'S0'
@@ -28,21 +33,21 @@ resource sqlDb 'Microsoft.Sql/servers/databases@2022-05-01-preview' = {
   }
 }
 
-resource adminCredentialsKeyVault 'Microsoft.KeyVault/vaults@2023-02-01' existing = {
+resource keyVault 'Microsoft.KeyVault/vaults@2021-10-01' existing = {
   name: last(split(adminCredentialsKeyVaultResourceId, '/'))
 }
 
-resource secretDbUserName 'Microsoft.KeyVault/vaults/secrets@2023-02-01' = {
+resource secretDbUserName 'Microsoft.KeyVault/vaults/secrets@2021-10-01' = {
   name: adminCredentialsKeyVaultSecretDbUserName
-  parent: adminCredentialsKeyVault
+  parent: keyVault
   properties: {
     value: sqlAdminUserName
   }
 }
 
-resource secretDbPassword 'Microsoft.KeyVault/vaults/secrets@2023-02-01' = {
+resource secretDbPassword 'Microsoft.KeyVault/vaults/secrets@2021-10-01' = {
   name: adminCredentialsKeyVaultSecretDbPassword
-  parent: adminCredentialsKeyVault
+  parent: keyVault
   properties: {
     value: sqlAdminPassword
   }
