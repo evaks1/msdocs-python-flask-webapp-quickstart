@@ -61,5 +61,5 @@ jobs:
       - name: Deploy to WebApp
         uses: azure/webapps-deploy@v3
         with:
-          app-name: "myStudentWebApp"
+          app-name: "ELSWebApp"
           images: "$(az keyvault secret show --name acr-username --vault-name $KEY_VAULT_NAME --query value -o tsv).azurecr.io/${{ env.IMAGE_BASE_NAME }}:${{ github.ref_name }}-latest"

@@ -1,0 +1,40 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+      "location": {
+        "value": "eastus"
+      },
+      "keyVaultName": {
+        "value": "ELSkeyvault123" 
+      },
+      "acrName": {
+        "value": "ELSacr123"
+      },
+      "appServicePlanName": {
+        "value": "ELSASP"
+      },
+      "webAppName": {
+        "value": "ELSWebApp"
+      },
+      "containerRegistryImageName": {
+        "value": "ELSapp"
+      },
+      "containerRegistryImageVersion": {
+        "value": "v1"
+      },
+      "sqlServerName": {
+        "value": "ELSsqlserver123"
+      },
+      "sqlAdminUserName": {
+        "value": "ELSsqladminuser"
+      },
+      "sqlAdminPassword": {
+        "value": "ELSComplexPassword123!"
+      },
+      "databaseName": {
+        "value": "ELSdb"
+      }
+    }
+  }
+  

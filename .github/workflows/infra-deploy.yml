@@ -15,11 +15,11 @@ jobs:
       - name: Azure Login
         uses: azure/login@v1
         with:
-          credentials: ${{ secrets.AZURE_CREDENTIALS }}
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Deploy Infrastructure (Key Vault + ACR + ASP + WebApp + SQL)
         run: |
           az deployment group create \
-            --resource-group <RESOURCE_GROUP> \
+            --resource-group BCSAI2024-DEVOPS-STUDENTS-A-DEV  \
             --template-file main.bicep \
             --parameters main.parameters.json
