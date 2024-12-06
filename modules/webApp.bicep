@@ -1,4 +1,5 @@
-// webApp.bicep
+// modules/webApp.bicep
+
 @description('Name of the Web App')
 param name string
 
@@ -20,16 +21,17 @@ param appSettingsKeyValuePairs object
 @description('Docker registry server URL')
 param dockerRegistryServerUrl string
 
-@description('Docker registry server username (retrieved from Key Vault)')
+@description('Docker registry server username (Key Vault secret URI)')
 param dockerRegistryServerUserName string
 
-@description('Docker registry server password (retrieved from Key Vault)')
+@description('Docker registry server password (Key Vault secret URI)')
+@secure()
 param dockerRegistryServerPassword string
 
 var dockerAppSettings = {
   DOCKER_REGISTRY_SERVER_URL: dockerRegistryServerUrl
-  DOCKER_REGISTRY_SERVER_USERNAME: dockerRegistryServerUserName
-  DOCKER_REGISTRY_SERVER_PASSWORD: dockerRegistryServerPassword
+  DOCKER_REGISTRY_SERVER_USERNAME: '@Microsoft.KeyVault(SecretUri=${dockerRegistryServerUserName})'
+  DOCKER_REGISTRY_SERVER_PASSWORD: '@Microsoft.KeyVault(SecretUri=${dockerRegistryServerPassword})'
 }
 
 resource webApp 'Microsoft.Web/sites@2021-02-01' = {
@@ -38,10 +40,12 @@ resource webApp 'Microsoft.Web/sites@2021-02-01' = {
   kind: kind
   properties: {
     serverFarmId: serverFarmResourceId
-    siteConfig: siteConfig
-    appSettings: union(appSettingsKeyValuePairs, dockerAppSettings)
+    siteConfig: {
+      linuxFxVersion: siteConfig.linuxFxVersion
+      appCommandLine: siteConfig.appCommandLine
+      appSettings: union(appSettingsKeyValuePairs, dockerAppSettings)
+    }
   }
 }
 
 output webAppId string = webApp.id
-

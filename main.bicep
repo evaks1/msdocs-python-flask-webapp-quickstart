@@ -69,6 +69,11 @@ module appServicePlanModule './modules/appServicePlan.bicep' = {
   }
 }
 
+var keyVaultUri = 'https://${keyVaultModule.outputs.keyVaultName}.vault.azure.net/'
+
+var acrUsernameSecretUri = '${keyVaultUri}secrets/ElsACRUsername'
+var acrPasswordSecretUri = '${keyVaultUri}secrets/ElsACRPassword1'
+
 module webAppModule './modules/webApp.bicep' = {
   name: 'webAppModule'
   params: {
@@ -82,8 +87,8 @@ module webAppModule './modules/webApp.bicep' = {
     }
     appSettingsKeyValuePairs: {}
     dockerRegistryServerUrl: 'https://${containerRegistryName}.azurecr.io'
-    dockerRegistryServerUserName: acrModule.outputs.acrAdminUsernameSecretId
-    dockerRegistryServerPassword: acrModule.outputs.acrAdminPassword1SecretId
+    dockerRegistryServerUserName: acrUsernameSecretUri
+    dockerRegistryServerPassword: acrPasswordSecretUri
   }
 }
 

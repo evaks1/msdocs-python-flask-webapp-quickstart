@@ -1,4 +1,5 @@
-// key-vault.bicep
+// modules/key-vault.bicep
+
 @description('Name of the Key Vault')
 param name string
 
@@ -10,6 +11,19 @@ param enableVaultForDeployment bool = true
 
 @description('Array of role assignments')
 param roleAssignments array
+
+// Function to resolve role definition IDs by name or GUID
+function getRoleDefinitionId(roleDefinitionIdOrName string) string {
+  if (length(roleDefinitionIdOrName) == 36 && contains(roleDefinitionIdOrName, '-')) {
+    return roleDefinitionIdOrName
+  } else {
+    // Predefined role names can be mapped to their IDs here
+    switch (roleDefinitionIdOrName) {
+      'Key Vault Secrets User' => '4633458b-17de-408a-b874-0445c86b69e6'
+      default => throw 'Unsupported role definition name.'
+    }
+  }
+}
 
 resource keyVault 'Microsoft.KeyVault/vaults@2021-10-01' = {
   name: name
