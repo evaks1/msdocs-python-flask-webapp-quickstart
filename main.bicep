@@ -22,7 +22,8 @@ param dbPasswordSecretName string = 'db-password'
 param principalId string = '7200f83e-ec45-4915-8c52-fb94147cfe5a'
 param roleDefinitionIdOrName string = 'Key Vault Secrets User'
 
-resource keyVaultDeploy 'modules/keyVault.bicep' = {
+// Correctly reference modules using the 'module' keyword and proper path
+module keyVaultDeploy './modules/keyVault.bicep' = {
   name: 'kv-deploy'
   params: {
     name: keyVaultName
@@ -32,7 +33,7 @@ resource keyVaultDeploy 'modules/keyVault.bicep' = {
   }
 }
 
-resource acrDeploy 'modules/acr.bicep' = {
+module acrDeploy './modules/acr.bicep' = {
   name: 'acr-deploy'
   dependsOn: [
     keyVaultDeploy
@@ -47,7 +48,7 @@ resource acrDeploy 'modules/acr.bicep' = {
   }
 }
 
-resource sqlDeploy 'modules/sqlDatabase.bicep' = {
+module sqlDeploy './modules/sqlDatabase.bicep' = {
   name: 'sqldb-deploy'
   dependsOn: [
     keyVaultDeploy
@@ -64,7 +65,7 @@ resource sqlDeploy 'modules/sqlDatabase.bicep' = {
   }
 }
 
-resource appServicePlan 'modules/appServicePlan.bicep' = {
+module appServicePlan './modules/appServicePlan.bicep' = {
   name: 'asp-deploy'
   params: {
     name: appServicePlanName
@@ -81,20 +82,13 @@ resource appServicePlan 'modules/appServicePlan.bicep' = {
   }
 }
 
+// Reference the Key Vault resource deployed by the keyVaultDeploy module
 resource keyvault 'Microsoft.KeyVault/vaults@2023-02-01' existing = {
   name: keyVaultDeploy.outputs.keyVaultName
 }
 
-var containerRegistryUsername = keyvault.getSecret(acrUserNameSecretName)
-var containerRegistryPassword = keyvault.getSecret(acrPasswordSecretName)
-
-var dbUsername = keyvault.getSecret(dbUserNameSecretName)
-var dbPassword = keyvault.getSecret(dbPasswordSecretName)
-
-// Example: add DB connection string as well
-var dbConnectionString = 'Server=tcp:${sqlDeploy.outputs.sqlServerFqdn},1433;Database=${databaseName};User ID=${dbUsername};Password=${dbPassword};'
-
-resource webApp 'modules/webApp.bicep' = {
+// Directly pass getSecret results to module parameters marked with @secure()
+module webApp './modules/webApp.bicep' = {
   name: 'webApp-deploy'
   dependsOn: [
     acrDeploy
@@ -112,10 +106,10 @@ resource webApp 'modules/webApp.bicep' = {
     }
     appSettingsKeyValuePairs: {
       WEBSITES_ENABLE_APP_SERVICE_STORAGE: false
-      DB_CONNECTION_STRING: dbConnectionString
+      DB_CONNECTION_STRING: 'Server=tcp:${sqlDeploy.outputs.sqlServerFqdn},1433;Database=${databaseName};User ID=${dbUserNameSecretName};Password=${dbPasswordSecretName};'
     }
     dockerRegistryServerUrl: 'https://${acrDeploy.outputs.registryLoginServer}'
-    dockerRegistryServerUserName: containerRegistryUsername
-    dockerRegistryServerPassword: containerRegistryPassword
+    dockerRegistryServerUserName: keyvault.getSecret(acrUserNameSecretName)
+    dockerRegistryServerPassword: keyvault.getSecret(acrPasswordSecretName)
   }
 }
