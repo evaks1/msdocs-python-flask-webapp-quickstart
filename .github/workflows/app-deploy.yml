@@ -57,5 +57,5 @@ jobs:
       - name: Deploy to WebApp
         uses: azure/webapps-deploy@v3
         with:
-          app-name: "ElsWebApp"
+          app-name: "elswebapp"
           images: "ElsACR123.azurecr.io/ElsAppImage:${{ steps.image-version.outputs.version }}"

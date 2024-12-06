@@ -1,47 +1,47 @@
-@description('Name of the static web app')
+// webApp.bicep
+@description('Name of the Web App')
 param name string
 
-@allowed([
-  'Free'
-  'Standard'
-])
-@description('The service tier')
-param sku string
+@description('Location for the Web App')
+param location string
 
-@description('Location of the resource')
-param location string = resourceGroup().location
+@description('Kind of the Web App')
+param kind string
 
-@description('Resource ID of the existing Key Vault')
-param keyVaultResourceId string
+@description('Resource ID of the App Service Plan')
+param serverFarmResourceId string
 
-@description('Name of the secret to store the deployment token')
-param keyVaultSecretName string
+@description('Site configuration for the Web App')
+param siteConfig object
 
-// Removed unused parameter 'dockerRegistryServerPassword'
+@description('Additional app settings key-value pairs')
+param appSettingsKeyValuePairs object
 
-resource staticSite 'Microsoft.Web/staticSites@2021-03-01' = {
+@description('Docker registry server URL')
+param dockerRegistryServerUrl string
+
+@description('Docker registry server username (retrieved from Key Vault)')
+param dockerRegistryServerUserName string
+
+@description('Docker registry server password (retrieved from Key Vault)')
+param dockerRegistryServerPassword string
+
+var dockerAppSettings = {
+  DOCKER_REGISTRY_SERVER_URL: dockerRegistryServerUrl
+  DOCKER_REGISTRY_SERVER_USERNAME: dockerRegistryServerUserName
+  DOCKER_REGISTRY_SERVER_PASSWORD: dockerRegistryServerPassword
+}
+
+resource webApp 'Microsoft.Web/sites@2021-02-01' = {
   name: name
   location: location
-  sku: {
-    name: sku
-  }
+  kind: kind
   properties: {
-    allowConfigFileUpdates: false
+    serverFarmId: serverFarmResourceId
+    siteConfig: siteConfig
+    appSettings: union(appSettingsKeyValuePairs, dockerAppSettings)
   }
 }
 
-// Referencing the existing Key Vault
-resource keyVault 'Microsoft.KeyVault/vaults@2021-06-01-preview' existing = {
-  name: last(split(keyVaultResourceId, '/'))
-}
+output webAppId string = webApp.id
 
-// Store the deployment token in Key Vault
-resource deploymentTokenSecret 'Microsoft.KeyVault/vaults/secrets@2021-06-01-preview' = {
-  name: keyVaultSecretName
-  parent: keyVault
-  properties: {
-    value: staticSite.listSecrets().apiKey // Ensure 'apiKey' is the correct property
-  }
-}
-
-output staticWebAppUrl string = staticSite.properties.defaultHostname

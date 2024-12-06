@@ -3,38 +3,23 @@
     "contentVersion": "1.0.0.0",
     "parameters": {
       "location": {
-        "value": "eastus"
+        "value": "West Europe"
       },
-      "keyVaultName": {
-        "value": "ElsKeyVault123"
-      },
-      "acrName": {
-        "value": "ElsACR123"
-      },
-      "appServicePlanName": {
-        "value": "ElsASP123"
-      },
-      "webAppName": {
-        "value": "ElsWebApp"
+      "containerRegistryName": {
+        "value": "elsacr"
       },
       "containerRegistryImageName": {
-        "value": "ElsAppImage"
+        "value": "flask-demo"
       },
       "containerRegistryImageVersion": {
-        "value": "v1"
+        "value": "latest"
       },
-      "sqlServerName": {
-        "value": "ElsSQLServer123"
+      "appServicePlanName": {
+        "value": "elsappserviceplan"
       },
-      "sqlAdminUserName": {
-        "value": "sqladmin"
-      },
-      "sqlAdminPassword": {
-        "value": "ComplexPassword123!"
-      },
-      "databaseName": {
-        "value": "ElsDatabase"
+      "webAppName": {
+        "value": "elswebapp"
+        
       }
     }
   }
-  

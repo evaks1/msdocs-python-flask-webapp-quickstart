@@ -1,7 +1,15 @@
+// key-vault.bicep
+@description('Name of the Key Vault')
 param name string
+
+@description('Location for the Key Vault')
 param location string
-param principalId string
-param roleDefinitionIdOrName string
+
+@description('Enable Key Vault for deployment')
+param enableVaultForDeployment bool = true
+
+@description('Array of role assignments')
+param roleAssignments array
 
 resource keyVault 'Microsoft.KeyVault/vaults@2021-10-01' = {
   name: name
@@ -12,21 +20,22 @@ resource keyVault 'Microsoft.KeyVault/vaults@2021-10-01' = {
       name: 'standard'
       family: 'A'
     }
-    accessPolicies: []
-    enabledForTemplateDeployment: true
+    accessPolicies: [] // Managed via role assignments
+    enabledForTemplateDeployment: enableVaultForDeployment
     publicNetworkAccess: 'Enabled'
   }
 }
 
-resource roleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = {
-  name: guid(keyVault.id, principalId, roleDefinitionIdOrName)
+resource roleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = [for assignment in roleAssignments: {
+  name: guid(keyVault.id, assignment.principalId, assignment.roleDefinitionIdOrName)
   scope: keyVault
   properties: {
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '4633458b-17de-408a-b874-0445c86b69e6') // Key Vault Secrets User role ID
-    principalId: principalId
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', getRoleDefinitionId(assignment.roleDefinitionIdOrName))
+    principalId: assignment.principalId
     principalType: 'ServicePrincipal'
   }
-}
+}]
 
 output keyVaultName string = keyVault.name
 output keyVaultId string = keyVault.id
+
