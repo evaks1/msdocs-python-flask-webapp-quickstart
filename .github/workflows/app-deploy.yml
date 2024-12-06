@@ -1,0 +1,65 @@
+name: Deploy Application
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  IMAGE_BASE_NAME: myapp
+  KEY_VAULT_NAME: ${{ secrets.KEY_VAULT_NAME }}
+  KEY_VAULT_SECRET_NAME_ACR_USERNAME: acr-username
+  KEY_VAULT_SECRET_NAME_ACR_PASSWORD: acr-password
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          credentials: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Get docker registry credentials from Azure Key Vault
+        uses: azure/CLI@v1
+        with:
+          inlineScript: |
+            echo "REGISTRY_USERNAME=$(az keyvault secret show --name $KEY_VAULT_SECRET_NAME_ACR_USERNAME --vault-name $KEY_VAULT_NAME --query value -o tsv)" >> $GITHUB_ENV
+            echo "REGISTRY_PASSWORD=$(az keyvault secret show --name $KEY_VAULT_SECRET_NAME_ACR_PASSWORD --vault-name $KEY_VAULT_NAME --query value -o tsv)" >> $GITHUB_ENV
+
+      - name: ACR Login
+        run: |
+          az acr login --name $(az keyvault secret show --name acr-username --vault-name $KEY_VAULT_NAME --query value -o tsv)
+        shell: bash
+
+      - name: Set image version
+        id: image-version
+        run: echo "::set-output name=version::$(echo ${GITHUB_REF#refs/heads/})-$(date +'%Y.%m.%d.%H.%M')"
+
+      - name: Build and push image
+        working-directory: ./app
+        run: |
+          REGISTRY=$(az keyvault secret show --name acr-username --vault-name $KEY_VAULT_NAME --query value -o tsv).azurecr.io
+          docker login $REGISTRY -u $REGISTRY_USERNAME -p $REGISTRY_PASSWORD
+          docker build . -t $REGISTRY/${{env.IMAGE_BASE_NAME}}:${{ steps.image-version.outputs.version }}
+          docker build . -t $REGISTRY/${{env.IMAGE_BASE_NAME}}:${{ github.ref_name }}-latest
+          docker push $REGISTRY/${{env.IMAGE_BASE_NAME}}:${{ steps.image-version.outputs.version }}
+          docker push $REGISTRY/${{env.IMAGE_BASE_NAME}}:${{ github.ref_name }}-latest
+
+  deploy-to-webapp:
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    steps:
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          credentials: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Deploy to WebApp
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: "myStudentWebApp"
+          images: "$(az keyvault secret show --name acr-username --vault-name $KEY_VAULT_NAME --query value -o tsv).azurecr.io/${{ env.IMAGE_BASE_NAME }}:${{ github.ref_name }}-latest"

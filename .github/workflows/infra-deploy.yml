@@ -1,0 +1,25 @@
+name: Deploy Infrastructure
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          credentials: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Deploy Infrastructure (Key Vault + ACR + ASP + WebApp + SQL)
+        run: |
+          az deployment group create \
+            --resource-group <RESOURCE_GROUP> \
+            --template-file main.bicep \
+            --parameters main.parameters.json
