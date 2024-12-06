@@ -13,16 +13,16 @@ param sqlAdminPassword string
 param databaseName string
 
 // Key Vault secrets names
-param acrUserNameSecretName string = 'acr-username'
-param acrPasswordSecretName string = 'acr-password'
-param dbUserNameSecretName string = 'db-username'
-param dbPasswordSecretName string = 'db-password'
+param acrUserNameSecretName string = 'ElsACRUsername'
+param acrPasswordSecretName string = 'ElsACRPassword'
+param dbUserNameSecretName string = 'ElsDBUsername'
+param dbPasswordSecretName string = 'ElsDBPassword'
 
 // The principalId for the SP that deploys resources (from instructions)
 param principalId string = '7200f83e-ec45-4915-8c52-fb94147cfe5a'
 param roleDefinitionIdOrName string = 'Key Vault Secrets User'
 
-// Correctly reference modules using the 'module' keyword and proper path
+// Reference modules using the 'module' keyword and correct paths
 module keyVaultDeploy './modules/keyVault.bicep' = {
   name: 'kv-deploy'
   params: {
@@ -65,7 +65,7 @@ module sqlDeploy './modules/sqlDatabase.bicep' = {
   }
 }
 
-module appServicePlan './modules/appServicePlan.bicep' = {
+module appServicePlanDeploy './modules/appServicePlan.bicep' = {
   name: 'asp-deploy'
   params: {
     name: appServicePlanName
@@ -83,23 +83,23 @@ module appServicePlan './modules/appServicePlan.bicep' = {
 }
 
 // Reference the Key Vault resource deployed by the keyVaultDeploy module
-resource keyvault 'Microsoft.KeyVault/vaults@2023-02-01' existing = {
+resource keyvault 'Microsoft.KeyVault/vaults@2021-10-01' existing = {
   name: keyVaultDeploy.outputs.keyVaultName
 }
 
 // Directly pass getSecret results to module parameters marked with @secure()
-module webApp './modules/webApp.bicep' = {
+module webAppDeploy './modules/webApp.bicep' = {
   name: 'webApp-deploy'
   dependsOn: [
     acrDeploy
-    appServicePlan
+    appServicePlanDeploy
     sqlDeploy
   ]
   params: {
     name: webAppName
     location: location
     kind: 'app'
-    serverFarmResourceId: appServicePlan.outputs.appServicePlanId
+    serverFarmResourceId: appServicePlanDeploy.outputs.appServicePlanId
     siteConfig: {
       linuxFxVersion: 'DOCKER|${acrDeploy.outputs.registryName}.azurecr.io/${containerRegistryImageName}:${containerRegistryImageVersion}'
       appCommandLine: ''
