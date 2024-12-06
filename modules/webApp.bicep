@@ -1,46 +1,47 @@
+@description('Name of the static web app')
 param name string
-param location string
-param kind string
-param serverFarmResourceId string
-param siteConfig object
-param appSettingsKeyValuePairs object
 
-@secure()
-param dockerRegistryServerUrl string
-@secure()
-param dockerRegistryServerUserName string
-@secure()
-param dockerRegistryServerPassword string
+@allowed([
+  'Free'
+  'Standard'
+])
+@description('The service tier')
+param sku string
 
-resource app 'Microsoft.Web/sites@2021-02-01' = {
+@description('Location of the resource')
+param location string = resourceGroup().location
+
+@description('Resource ID of the existing Key Vault')
+param keyVaultResourceId string
+
+@description('Name of the secret to store the deployment token')
+param keyVaultSecretName string
+
+// Removed unused parameter 'dockerRegistryServerPassword'
+
+resource staticSite 'Microsoft.Web/staticSites@2021-03-01' = {
   name: name
   location: location
-  kind: kind
+  sku: {
+    name: sku
+  }
   properties: {
-    serverFarmId: serverFarmResourceId
-    siteConfig: {
-      linuxFxVersion: siteConfig.linuxFxVersion
-      appCommandLine: siteConfig.appCommandLine
-    }
-    appSettings: [
-      for (key, value) in appSettingsKeyValuePairs: {
-        name: key
-        value: value
-      }
-      {
-        name: 'DOCKER_REGISTRY_SERVER_URL'
-        value: dockerRegistryServerUrl
-      }
-      {
-        name: 'DOCKER_REGISTRY_SERVER_USERNAME'
-        value: dockerRegistryServerUserName
-      }
-      {
-        name: 'DOCKER_REGISTRY_SERVER_PASSWORD'
-        value: dockerRegistryServerPassword
-      }
-    ]
+    allowConfigFileUpdates: false
   }
 }
 
-output webAppName string = app.name
+// Referencing the existing Key Vault
+resource keyVault 'Microsoft.KeyVault/vaults@2021-06-01-preview' existing = {
+  name: last(split(keyVaultResourceId, '/'))
+}
+
+// Store the deployment token in Key Vault
+resource deploymentTokenSecret 'Microsoft.KeyVault/vaults/secrets@2021-06-01-preview' = {
+  name: keyVaultSecretName
+  parent: keyVault
+  properties: {
+    value: staticSite.listSecrets().apiKey // Ensure 'apiKey' is the correct property
+  }
+}
+
+output staticWebAppUrl string = staticSite.properties.defaultHostname

@@ -1,115 +1,165 @@
-param location string
+// ========================================
+// General Parameters
+// ========================================
+@description('Location for all resources')
+param location string = resourceGroup().location
+
+// ========================================
+// Step 1: Deploy Key Vault
+// ========================================
+@description('The name of the Key Vault')
 param keyVaultName string
-param acrName string
-param appServicePlanName string
-param webAppName string
-param containerRegistryImageName string
-param containerRegistryImageVersion string
 
-param sqlServerName string
-param sqlAdminUserName string
-@secure()
-param sqlAdminPassword string
-param databaseName string
+@description('Enable RBAC authorization for Key Vault')
+param enableRbacAuthorization bool = true
 
-// Key Vault secrets names
-param acrUserNameSecretName string = 'ElsACRUsername'
-param acrPasswordSecretName string = 'ElsACRPassword'
-param dbUserNameSecretName string = 'ElsDBUsername'
-param dbPasswordSecretName string = 'ElsDBPassword'
+@description('Enable Key Vault\'s soft delete feature')
+param enableSoftDelete bool = true
 
-// The principalId for the SP that deploys resources (from instructions)
-param principalId string = '7200f83e-ec45-4915-8c52-fb94147cfe5a'
-param roleDefinitionIdOrName string = 'Key Vault Secrets User'
+@description('Role assignments for Key Vault')
+param keyVaultRoleAssignments array = []
 
-// Reference modules using the 'module' keyword and correct paths
-module keyVaultDeploy './modules/keyVault.bicep' = {
-  name: 'kv-deploy'
+module keyVault 'modules/keyVault.bicep' = {
+  name: 'keyVaultDeployment'
   params: {
     name: keyVaultName
     location: location
-    principalId: principalId
-    roleDefinitionIdOrName: roleDefinitionIdOrName
+    enableRbacAuthorization: enableRbacAuthorization
+    enableSoftDelete: enableSoftDelete
+    roleAssignments: keyVaultRoleAssignments
   }
 }
 
-module acrDeploy './modules/acr.bicep' = {
-  name: 'acr-deploy'
-  dependsOn: [
-    keyVaultDeploy
-  ]
+output keyVaultId string = keyVault.outputs.keyVaultId
+
+// ========================================
+// Step 2: Deploy Azure Container Registry
+// ========================================
+@description('The name of the Azure Container Registry')
+param acrName string
+
+@description('Name of the Key Vault secret for the ACR admin username')
+param acrAdminUsernameSecretName string = 'ACRAdminUsername'
+
+@description('Name of the Key Vault secret for the ACR admin password')
+param acrAdminPasswordSecretName string = 'ACRAdminPassword'
+
+module acr 'modules/acr.bicep' = {
+  name: 'acrDeployment'
   params: {
     name: acrName
     location: location
     acrAdminUserEnabled: true
-    adminCredentialsKeyVaultResourceId: keyVaultDeploy.outputs.keyVaultId
-    adminCredentialsKeyVaultSecretUserName: acrUserNameSecretName
-    adminCredentialsKeyVaultSecretUserPassword: acrPasswordSecretName
+    keyVaultResourceId: keyVault.outputs.keyVaultId
+    adminCredentialsKeyVaultSecretUserName: acrAdminUsernameSecretName
+    adminCredentialsKeyVaultSecretUserPassword: acrAdminPasswordSecretName
   }
-}
-
-module sqlDeploy './modules/sqlDatabase.bicep' = {
-  name: 'sqldb-deploy'
   dependsOn: [
-    keyVaultDeploy
+    keyVault
   ]
-  params: {
-    location: location
-    sqlServerName: sqlServerName
-    sqlAdminUserName: sqlAdminUserName
-    sqlAdminPassword: sqlAdminPassword
-    databaseName: databaseName
-    adminCredentialsKeyVaultResourceId: keyVaultDeploy.outputs.keyVaultId
-    adminCredentialsKeyVaultSecretDbUserName: dbUserNameSecretName
-    adminCredentialsKeyVaultSecretDbPassword: dbPasswordSecretName
-  }
 }
 
-module appServicePlanDeploy './modules/appServicePlan.bicep' = {
-  name: 'asp-deploy'
+output acrLoginServer string = acr.outputs.registryLoginServer
+
+// ========================================
+// Step 3: Deploy App Service Plan
+// ========================================
+@description('The name of the App Service Plan')
+param appServicePlanName string
+
+@description('The SKU for the App Service Plan (e.g., B1, F1)')
+@allowed([
+  'B1'
+  'F1'
+])
+param appServicePlanSku string = 'B1'
+
+module appServicePlan 'modules/appServicePlan.bicep' = {
+  name: 'appServicePlanDeployment'
   params: {
     name: appServicePlanName
     location: location
-    sku: {
-      capacity: 1
-      family: 'B'
-      name: 'B1'
-      size: 'B1'
-      tier: 'Basic'
-      kind: 'Linux'
-      reserved: true
-    }
+    sku: appServicePlanSku
   }
 }
 
-// Reference the Key Vault resource deployed by the keyVaultDeploy module
-resource keyvault 'Microsoft.KeyVault/vaults@2021-10-01' existing = {
-  name: keyVaultDeploy.outputs.keyVaultName
+output appServicePlanId string = appServicePlan.outputs.appServicePlanId
+
+// ========================================
+// Step 4: Deploy SQL Database
+// ========================================
+@description('The name of the SQL Server')
+param sqlServerName string
+
+@description('The admin username for the SQL Server')
+param sqlAdminUserName string
+
+@description('The admin password for the SQL Server')
+@secure()
+param sqlAdminPassword string
+
+@description('The name of the SQL Database')
+param sqlDatabaseName string
+
+module sqlDatabase 'modules/sqlDatabase.bicep' = {
+  name: 'sqlDatabaseDeployment'
+  params: {
+    serverName: sqlServerName
+    adminUserName: sqlAdminUserName
+    adminPassword: sqlAdminPassword
+    databaseName: sqlDatabaseName
+    location: location
+  }
 }
 
-// Directly pass getSecret results to module parameters marked with @secure()
-module webAppDeploy './modules/webApp.bicep' = {
-  name: 'webApp-deploy'
-  dependsOn: [
-    acrDeploy
-    appServicePlanDeploy
-    sqlDeploy
-  ]
+output sqlConnectionString string = sqlDatabase.outputs.connectionString
+
+// ========================================
+// Step 5: Deploy Web App
+// ========================================
+@description('The name of the Web App')
+param webAppName string
+
+@description('The Docker image name for the Web App')
+param dockerImageName string
+
+@description('The Docker image version for the Web App')
+param dockerImageVersion string
+
+@description('App settings for the Web App')
+param webAppSettings object = {}
+
+@secure()
+@description('Admin username for the Web App')
+param adminUsername string = '' // To be overridden by workflow
+
+@secure()
+@description('Admin password for the Web App')
+param adminPassword string = '' // To be overridden by workflow
+
+// Reference to Key Vault to retrieve secrets
+resource keyVaultReference 'Microsoft.KeyVault/vaults@2023-07-01' existing = {
+  name: keyVaultName
+}
+
+module webApp 'modules/webApp.bicep' = {
+  name: 'webAppDeployment'
   params: {
     name: webAppName
     location: location
-    kind: 'app'
-    serverFarmResourceId: appServicePlanDeploy.outputs.appServicePlanId
-    siteConfig: {
-      linuxFxVersion: 'DOCKER|${acrDeploy.outputs.registryName}.azurecr.io/${containerRegistryImageName}:${containerRegistryImageVersion}'
-      appCommandLine: ''
-    }
-    appSettingsKeyValuePairs: {
-      WEBSITES_ENABLE_APP_SERVICE_STORAGE: false
-      DB_CONNECTION_STRING: 'Server=tcp:${sqlDeploy.outputs.sqlServerFqdn},1433;Database=${databaseName};User ID=${dbUserNameSecretName};Password=${dbPasswordSecretName};'
-    }
-    dockerRegistryServerUrl: 'https://${acrDeploy.outputs.registryLoginServer}'
-    dockerRegistryServerUserName: keyvault.getSecret(acrUserNameSecretName)
-    dockerRegistryServerPassword: keyvault.getSecret(acrPasswordSecretName)
+    appServicePlanId: appServicePlan.outputs.appServicePlanId
+    dockerRegistryServerUrl: 'https://${acr.outputs.registryLoginServer}'
+    dockerRegistryServerUserName: keyVaultReference.getSecret(acrAdminUsernameSecretName)
+    dockerRegistryServerPassword: keyVaultReference.getSecret(acrAdminPasswordSecretName)
+    dockerImageName: dockerImageName
+    dockerImageVersion: dockerImageVersion
+    appSettingsKeyValuePairs: webAppSettings
   }
+  dependsOn: [
+    acr
+    appServicePlan
+    sqlDatabase
+  ]
 }
+
+output webAppUrl string = webApp.outputs.webAppUrl
