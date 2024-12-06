@@ -38,4 +38,3 @@ resource roleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-prev
 
 output keyVaultName string = keyVault.name
 output keyVaultId string = keyVault.id
-

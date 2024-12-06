@@ -1,7 +1,9 @@
+// main.bicep
+
 @description('The location for the resources')
 param location string = resourceGroup().location
 
-@description('Name of the ACR')
+@description('Name of the Azure Container Registry')
 param containerRegistryName string
 
 @description('Name of the container image')
@@ -16,18 +18,41 @@ param appServicePlanName string
 @description('Name of the Web App')
 param webAppName string
 
+@description('Name of the Key Vault')
+param keyVaultName string
 
-module acr './modules/acr.bicep' = {
+@description('Principal ID for role assignments')
+param principalId string = '7200f83e-ec45-4915-8c52-fb94147cfe5a' // Replace with your Service Principal ID
+
+module keyVaultModule './modules/keyVault.bicep' = {
+  name: 'keyVaultModule'
+  params: {
+    name: keyVaultName
+    location: location
+    enableVaultForDeployment: true
+    roleAssignments: [
+      {
+        principalId: principalId
+        roleDefinitionIdOrName: 'Key Vault Secrets User'
+      }
+    ]
+  }
+}
+
+module acrModule './modules/acr.bicep' = {
   name: 'acrModule'
   params: {
     name: containerRegistryName
     location: location
     acrAdminUserEnabled: true
+    adminCredentialsKeyVaultResourceId: keyVaultModule.outputs.keyVaultId
+    adminCredentialsKeyVaultSecretUserName: 'ElsACRUsername'
+    adminCredentialsKeyVaultSecretUserPassword1: 'ElsACRPassword1'
+    adminCredentialsKeyVaultSecretUserPassword2: 'ElsACRPassword2'
   }
 }
 
-
-module appServicePlan './modules/asp.bicep' = {
+module appServicePlanModule './modules/appServicePlan.bicep' = {
   name: 'appServicePlanModule'
   params: {
     name: appServicePlanName
@@ -44,23 +69,26 @@ module appServicePlan './modules/asp.bicep' = {
   }
 }
 
-module webApp './modules/awa.bicep' = {
+module webAppModule './modules/webApp.bicep' = {
   name: 'webAppModule'
   params: {
     name: webAppName
     location: location
     kind: 'app'
-    serverFarmResourceId: appServicePlan.outputs.resourceId
+    serverFarmResourceId: appServicePlanModule.outputs.resourceId
     siteConfig: {
       linuxFxVersion: 'DOCKER|${containerRegistryName}.azurecr.io/${containerRegistryImageName}:${containerRegistryImageVersion}'
       appCommandLine: ''
     }
-    appSettingsKeyValuePairs: {
-      WEBSITES_ENABLE_APP_SERVICE_STORAGE: 'false'
-      DOCKER_REGISTRY_SERVER_URL: '${containerRegistryName}.azurecr.io'
-      DOCKER_REGISTRY_SERVER_USERNAME: acr.outputs.credentials.username
-      DOCKER_REGISTRY_SERVER_PASSWORD: acr.outputs.credentials.password
-    }
+    appSettingsKeyValuePairs: {}
+    dockerRegistryServerUrl: 'https://${containerRegistryName}.azurecr.io'
+    dockerRegistryServerUserName: acrModule.outputs.acrAdminUsernameSecretId
+    dockerRegistryServerPassword: acrModule.outputs.acrAdminPassword1SecretId
   }
-
 }
+
+output keyVaultName string = keyVaultModule.outputs.keyVaultName
+output keyVaultId string = keyVaultModule.outputs.keyVaultId
+output acrName string = acrModule.outputs.acrName
+output acrId string = acrModule.outputs.acrId
+output webAppId string = webAppModule.outputs.webAppId
