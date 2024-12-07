@@ -12,7 +12,7 @@
       "value": "ELSWEBAPP"
     },
     "location": {
-      "value": "West Europe"
+      "value": "westeurope"
     },
     "containerRegistryImageName": {
       "value": "ELSimage"
