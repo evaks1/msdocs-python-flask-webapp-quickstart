@@ -46,7 +46,7 @@ jobs:
       REGISTRY_LOGIN_SERVER: elsacr.azurecr.io       # Replace with your actual ACR login server
       IMAGE_BASE_NAME: elsimage                     # As per main.bicep
       WEBAPP_NAME: ELSexerciseWEBAPP                # As per main.bicep
-      KEY_VAULT_NAME: ELSKeyVault                   # Name of your Key Vault
+      KEY_VAULT_NAME: ElsKeyVault                   # Name of your Key Vault
       KEY_VAULT_SECRET_NAME_ACR_USERNAME: ACR-Username
       KEY_VAULT_SECRET_NAME_ACR_PASSWORD: ACR-Password1
 
