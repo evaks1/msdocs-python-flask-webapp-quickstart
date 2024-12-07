@@ -37,7 +37,7 @@
           "principalType": "ServicePrincipal"
         },
         {
-          "principalId": "1736344c-8095-440c-876e-bda11cdb224f", 
+          "principalId": "a03130df-486f-46ea-9d5c-70522fe056de", 
           "roleDefinitionIdOrName": "Key Vault Administrator",
           "principalType": "Group"
         }
