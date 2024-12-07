@@ -1,49 +1,67 @@
-@description('Parameters for deploying infrastructure')
+// main.bicep
+
+param location string = 'westeurope'
 param containerRegistryName string
 param appServicePlanName string
 param webAppName string
-param location string
 param containerRegistryImageName string
 param containerRegistryImageVersion string
 
-module acrModule './modules/acr.bicep' = {
+// Deploy Key Vault
+module keyVaultModule 'modules/keyVault.bicep' = {
+  name: 'keyVaultDeployment'
+  params: {
+    name: 'ELSKeyVault'
+    location: location
+    enableVaultForDeployment: true
+    roleAssignments: [
+      {
+        principalId: '7200f83e-ec45-4915-8c52-fb94147cfe5a'
+        roleDefinitionIdOrName: 'Key Vault Secrets User'
+        principalType: 'ServicePrincipal'
+      }
+    ]
+  }
+}
+
+// Deploy Container Registry
+module containerRegistryModule 'modules/acr.bicep' = {
   name: 'containerRegistryDeployment'
   params: {
     name: containerRegistryName
     location: location
-    acrAdminUserEnabled: true
+    acrAdminUserEnabled: false
+    adminCredentialsKeyVaultResourceId: keyVaultModule.outputs.keyVaultId
+    adminCredentialsKeyVaultSecretUserName: 'ACR-Username'
+    adminCredentialsKeyVaultSecretUserPassword1: 'ACR-Password1'
+    adminCredentialsKeyVaultSecretUserPassword2: 'ACR-Password2'
   }
 }
 
-module appServicePlanModule './modules/appServicePlan.bicep' = {
-  name: 'appServicePlanDeployment'
-  params: {
-    name: appServicePlanName
-    location: location
-    sku: {
-      capacity: 1
-      family: 'B'
-      name: 'B1'
-      size: 'B1'
-      tier: 'Basic'
-      kind: 'Linux'
-      reserved: true
-    }
+// Deploy App Service Plan
+resource appServicePlan 'Microsoft.Web/serverfarms@2021-02-01' = {
+  name: appServicePlanName
+  location: location
+  sku: {
+    name: 'B1'
+    tier: 'Basic'
   }
+  properties: {}
 }
 
-module webAppModule './modules/webApp.bicep' = {
+// Deploy Web App
+module webAppModule 'modules/webApp.bicep' = {
   name: 'webAppDeployment'
   params: {
     name: webAppName
     location: location
-    serverFarmResourceId: appServicePlanModule.outputs.appServicePlanId
-    containerRegistryUrl: acrModule.outputs.acrLoginServer
-    containerImageName: containerRegistryImageName
-    containerImageVersion: containerRegistryImageVersion
-    dockerRegistryUsername: acrModule.outputs.acrUsername
-    dockerRegistryPassword: acrModule.outputs.acrPassword
+    serverFarmResourceId: appServicePlan.id
+    dockerRegistryServerUrl: containerRegistryModule.outputs.acrLoginServer
+    dockerRegistryServerUserName: 'ACR-Username' // Secret will be fetched from Key Vault in GitHub Actions
+    dockerRegistryServerPassword: 'ACR-Password1' // Secret will be fetched from Key Vault in GitHub Actions
+    containerRegistryImageName: containerRegistryImageName
+    containerRegistryImageVersion: containerRegistryImageVersion
   }
 }
 
-output webAppUrl string = 'https://${webAppModule.outputs.webAppDefaultHostName}'
+output webAppUrl string = webAppModule.outputs.webAppDefaultHostName
