@@ -1,27 +1,26 @@
-// appServicePlan.bicep
 @description('Name of the App Service Plan')
 param name string
 
 @description('Location for the App Service Plan')
 param location string
 
-@description('SKU for the App Service Plan')
+@description('SKU details for the App Service Plan')
 param sku object
 
-@description('Kind of the App Service Plan')
-param kind string
-
-@description('Reserved flag for the App Service Plan')
-param reserved bool
-
-resource appServicePlan 'Microsoft.Web/serverfarms@2021-02-01' = {
+resource appServicePlan 'Microsoft.Web/serverfarms@2021-03-01' = {
   name: name
   location: location
-  sku: sku
-  kind: kind
+  sku: {
+    name: sku.name
+    tier: sku.tier
+    capacity: sku.capacity
+    size: sku.size
+    family: sku.family
+  }
+  kind: sku.kind
   properties: {
-    reserved: reserved
+    reserved: sku.reserved
   }
 }
 
-output resourceId string = appServicePlan.id
+output appServicePlanId string = appServicePlan.id
