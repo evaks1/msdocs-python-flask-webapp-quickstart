@@ -11,7 +11,7 @@ param containerRegistryImageVersion string
 module keyVaultModule 'modules/keyVault.bicep' = {
   name: 'keyVaultDeployment'
   params: {
-    name: 'ELSKeyvault202'
+    name: 'ELSKeyvault20'
     location: location
     roleAssignments: [
       {
@@ -29,7 +29,7 @@ module containerRegistryModule 'modules/acr.bicep' = {
   params: {
     name: containerRegistryName
     location: location
-    acrAdminUserEnabled: false
+    acrAdminUserEnabled: true
     keyVaultId: keyVaultModule.outputs.keyVaultId
     adminCredentialsKeyVaultSecretUserName: 'ACR-Username'
     adminCredentialsKeyVaultSecretUserPassword1: 'ACR-Password1'
