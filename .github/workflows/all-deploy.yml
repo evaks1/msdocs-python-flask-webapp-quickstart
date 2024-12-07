@@ -16,114 +16,65 @@ env:
   REGISTRY_LOGIN_SERVER: elsacr.azurecr.io       # ACR login server (e.g., yourregistry.azurecr.io)
   IMAGE_BASE_NAME: elsimage                      # As per main.bicep
   WEBAPP_NAME: ELSexerciseWEBAPP                 # As per main.bicep
-  KEY_VAULT_NAME: ELSKeyvault2                # Name of your Key Vault
-  KEY_VAULT_SECRET_NAME_ACR_USERNAME: ACR-Username
-  KEY_VAULT_SECRET_NAME_ACR_PASSWORD: ACR-Password1
+  KEY_VAULT_NAME: elskeyvault2                # Name of your Key Vault
+  ACR_USERNAME_SECRET: adminUsernameSecretName
+  ACR_PASSWORD_SECRET: adminPasswordSecretName
 
 jobs:
-  build-bicep:
-    name: Build and Lint Bicep Templates
+  build-and-push:
     runs-on: ubuntu-latest
+    outputs:
+      image-version: ${{ steps.image-version.outputs.version }}
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v3
+    - name: Checkout code
+      uses: actions/checkout@main
 
-      - name: Validate Bicep Template
-        run: az bicep build --file ./main.bicep
+    - name: Login to Azure
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Lint Bicep Template
-        run: az bicep lint --file ./main.bicep
+    - name: 'Get ACR credentials from Azure Key Vault'
+      uses: azure/CLI@v1
+      with:
+        inlineScript: |
+          ACR_USERNAME=$(az keyvault secret show --name ${{ env.ACR_USERNAME_SECRET }} --vault-name ${{ env.KEY_VAULT_NAME }} --query value -o tsv)
+          ACR_PASSWORD=$(az keyvault secret show --name ${{ env.ACR_PASSWORD_SECRET }} --vault-name ${{ env.KEY_VAULT_NAME }} --query value -o tsv)
+          echo "REGISTRY_USERNAME=$ACR_USERNAME" >> $GITHUB_ENV
+          echo "REGISTRY_PASSWORD=$ACR_PASSWORD" >> $GITHUB_ENV
 
-  deploy-infrastructure:
-    name: Deploy Azure Infrastructure
+    - name: Debug ACR credentials
+      run: |
+        echo "ACR Username: $REGISTRY_USERNAME"
+        echo "ACR Password Length: ${#REGISTRY_PASSWORD}"
+
+    - name: Login to ACR
+      run: |
+        echo "$REGISTRY_PASSWORD" | docker login $REGISTRY_LOGIN_SERVER -u $REGISTRY_USERNAME --password-stdin
+
+    - name: Set image version
+      id: image-version
+      run: echo "version=${GITHUB_REF#refs/heads/}-$(date +'%Y.%m.%d.%H.%M')" >> $GITHUB_OUTPUT
+
+    - name: Build and Push Docker Image
+      run: |
+        docker build . -t ${{ env.REGISTRY_LOGIN_SERVER }}/${{env.IMAGE_BASE_NAME}}:${{ steps.image-version.outputs.version }}
+        docker tag ${{ env.REGISTRY_LOGIN_SERVER }}/${{env.IMAGE_BASE_NAME}}:${{ steps.image-version.outputs.version }} ${{ env.REGISTRY_LOGIN_SERVER }}/${{env.IMAGE_BASE_NAME}}:latest
+        docker push ${{ env.REGISTRY_LOGIN_SERVER }}/${{env.IMAGE_BASE_NAME}}:${{ steps.image-version.outputs.version }}
+        docker push ${{ env.REGISTRY_LOGIN_SERVER }}/${{env.IMAGE_BASE_NAME}}:latest
+
+  deploy:
     runs-on: ubuntu-latest
-    needs: build-bicep
-    environment:
-      name: 'Development'
+    needs: build-and-push
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v3
+    - name: Login to Azure
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Azure Login
-        uses: azure/login@v2
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-
-      - name: Deploy Infrastructure with Bicep
-        run: |
-          az deployment group create \
-            --resource-group ${{ env.RESOURCE_GROUP_DEV }} \
-            --template-file ./main.bicep \
-            --parameters @./main.parameters.json
-
-      - name: Wait for ACR to be Ready
-        run: |
-          for i in {1..10}; do
-            az acr check-health --name ${{ env.ACR_NAME }} --resource-group ${{ env.RESOURCE_GROUP_DEV }} && break
-            echo "ACR not ready yet, waiting..."
-            sleep 10
-          done
-
-  build-and-push-docker-image:
-    name: Build and Push Docker Image to ACR
-    runs-on: ubuntu-latest
-    needs: deploy-infrastructure
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v3
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
-
-      - name: Azure Login
-        uses: azure/login@v2
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-
-      - name: Set Variables from Key Vault
-        uses: azure/cli@v1
-        with:
-          inlineScript: |
-            REGISTRY_USERNAME=$(az keyvault secret show --name ${{ env.KEY_VAULT_SECRET_NAME_ACR_USERNAME }} --vault-name ${{ env.KEY_VAULT_NAME }} --query value -o tsv)
-            REGISTRY_PASSWORD=$(az keyvault secret show --name ${{ env.KEY_VAULT_SECRET_NAME_ACR_PASSWORD }} --vault-name ${{ env.KEY_VAULT_NAME }} --query value -o tsv)
-            echo "REGISTRY_USERNAME=${REGISTRY_USERNAME}" >> $GITHUB_ENV
-            echo "REGISTRY_PASSWORD=${REGISTRY_PASSWORD}" >> $GITHUB_ENV
-
-      - name: Azure Docker Login
-        uses: docker/login-action@v2
-        with:
-          registry: ${{ env.REGISTRY_LOGIN_SERVER }}
-          username: ${{ env.REGISTRY_USERNAME }}
-          password: ${{ env.REGISTRY_PASSWORD }}
-
-      - name: Set Image Version
-        id: image-version
-        run: |
-          VERSION_TAG=${GITHUB_REF#refs/heads/}-$(date +'%Y.%m.%d.%H.%M')
-          echo "version=${VERSION_TAG}" >> $GITHUB_OUTPUT
-
-      - name: Build and Push Docker Image
-        run: |
-          docker build . -t ${{ env.REGISTRY_LOGIN_SERVER }}/${{ env.IMAGE_BASE_NAME }}:${{ steps.image-version.outputs.version }}
-          docker tag ${{ env.REGISTRY_LOGIN_SERVER }}/${{ env.IMAGE_BASE_NAME }}:${{ steps.image-version.outputs.version }} ${{ env.REGISTRY_LOGIN_SERVER }}/${{ env.IMAGE_BASE_NAME }}:latest
-          docker push ${{ env.REGISTRY_LOGIN_SERVER }}/${{ env.IMAGE_BASE_NAME }}:${{ steps.image-version.outputs.version }}
-          docker push ${{ env.REGISTRY_LOGIN_SERVER }}/${{ env.IMAGE_BASE_NAME }}:latest
-
-  deploy-webapp:
-    name: Deploy to Azure Web App
-    runs-on: ubuntu-latest
-    needs: build-and-push-docker-image
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v3
-
-      - name: Azure Login
-        uses: azure/login@v2
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-
-      - name: Deploy to Azure Web App
-        uses: azure/webapps-deploy@v3
-        with:
-          app-name: ${{ env.WEBAPP_NAME }}
-          images: ${{ env.REGISTRY_LOGIN_SERVER }}/${{ env.IMAGE_BASE_NAME }}:${{ steps.image-version.outputs.version }}
+    - name: Deploy Docker Image to Azure Web App
+      uses: azure/webapps-deploy@v3
+      with:
+        app-name: ${{ env.WEBAPP_NAME }}
+        images: |
+          ${{ env.REGISTRY_LOGIN_SERVER }}/${{ env.IMAGE_BASE_NAME }}:${{ needs.build-and-push.outputs.image-version }}

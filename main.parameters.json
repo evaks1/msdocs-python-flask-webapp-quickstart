@@ -12,13 +12,36 @@
       "value": "ELSexerciseWEBAPP"
     },
     "location": {
-      "value": "westeurope"
+      "value": "North Europe"
     },
     "containerRegistryImageName": {
       "value": "elsimage"
     },
     "containerRegistryImageVersion": {
       "value": "latest"
+    },
+    "keyVaultName": {
+      "value": "elskeyvault2"
+    },
+    "keyVaultSku": {
+      "value": "standard"
+    },
+    "enableSoftDelete": {
+      "value": true
+    },
+    "keyVaultRoleAssignment": {
+      "value": [
+        {
+          "principalId": "25d8d697-c4a2-479f-96e0-15593a830ae5", 
+          "roleDefinitionIdOrName": "Key Vault Secrets User",
+          "principalType": "ServicePrincipal"
+        },
+        {
+          "principalId": "1736344c-8095-440c-876e-bda11cdb224f", 
+          "roleDefinitionIdOrName": "Key Vault Administrator",
+          "principalType": "Group"
+        }
+      ]
     }
   }
 }

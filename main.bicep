@@ -1,67 +1,77 @@
-// main.bicep
-
-param location string = 'westeurope'
+@description('Name of the Azure Container Registry')
 param containerRegistryName string
-param appServicePlanName string
-param webAppName string
+
+@description('Location of resources')
+param location string
+
+@description('Image name for the container')
 param containerRegistryImageName string
+
+@description('Image version for the container')
 param containerRegistryImageVersion string
 
+@description('Name of the App Service Plan')
+param appServicePlanName string
 
-// Deploy Key Vault
-module keyVaultModule 'modules/keyVault.bicep' = {
-  name: 'keyVaultDeployment'
+@description('Name of the Web App')
+param webAppName string
+
+@description('The Key Vault name')
+param keyVaultName string
+@description('The Key Vault SKU')
+param keyVaultSku string
+param enableSoftDelete bool 
+@sys.description('The role assignments for the Key Vault')
+param keyVaultRoleAssignments array 
+var adminPasswordSecretName = 'adminPasswordSecretName'
+var adminUsernameSecretName = 'adminUsernameSecretName'
+
+module keyVault 'modules/keyVault.bicep' = {
+  name: keyVaultName
   params: {
-    name: 'ELSKeyvault2'
+    name: keyVaultName
     location: location
-    roleAssignments: [
-      {
-        principalId: '7200f83e-ec45-4915-8c52-fb94147cfe5a'
-        roleDefinitionIdOrName: 'Key Vault Secrets User'
-        principalType: 'ServicePrincipal'
-      }
-    ]
+    sku: keyVaultSku
+    roleAssignments: keyVaultRoleAssignments
+    enableVaultForDeployment: true
+    enableSoftDelete: enableSoftDelete
   }
 }
 
-// Deploy Container Registry
-module containerRegistryModule 'modules/acr.bicep' = {
-  name: 'containerRegistryDeployment'
+module containerRegistryModule './modules/acr.bicep' = {
+  name: containerRegistryName
   params: {
-    name: containerRegistryName
+    keyVaultResourceId: keyVault.outputs.resourceId
+    keyVaultSecreNameAdminUsername: adminUsernameSecretName
+    keyVaultSecreNameAdminPassword: adminPasswordSecretName
+    containerRegistryName: containerRegistryName
     location: location
-    acrAdminUserEnabled: true
-    keyVaultId: keyVaultModule.outputs.keyVaultId
-    adminCredentialsKeyVaultSecretUserName: 'ACR-Username'
-    adminCredentialsKeyVaultSecretUserPassword1: 'ACR-Password1'
-    adminCredentialsKeyVaultSecretUserPassword2: 'ACR-Password2'
+
   }
 }
 
-// Deploy App Service Plan
-resource appServicePlan 'Microsoft.Web/serverfarms@2021-02-01' = {
+module appServicePlanModule './modules/appServicePlan.bicep' = {
   name: appServicePlanName
-  location: location
-  sku: {
-    name: 'B1'
-    tier: 'Basic'
-  }
-  properties: {}
-}
-
-// Deploy Web App
-module webAppModule 'modules/webApp.bicep' = {
-  name: 'webAppDeployment'
   params: {
-    name: webAppName
+    appServicePlanName: appServicePlanName
     location: location
-    serverFarmResourceId: appServicePlan.id
-    dockerRegistryServerUrl: containerRegistryModule.outputs.acrLoginServer
-    dockerRegistryServerUserName: 'ACR-Username' // Secret will be fetched from Key Vault in GitHub Actions
-    dockerRegistryServerPassword: 'ACR-Password1' // Secret will be fetched from Key Vault in GitHub Actions
-    containerRegistryImageName: containerRegistryImageName
-    containerRegistryImageVersion: containerRegistryImageVersion
   }
 }
 
-output webAppUrl string = webAppModule.outputs.webAppDefaultHostName
+resource keyVaultReference 'Microsoft.KeyVault/vaults@2023-07-01' existing = {
+  name: keyVaultName
+  }
+module webAppModule './modules/webApp.bicep' = {
+  name: webAppName
+  params: {
+    webAppName: webAppName
+    location: location
+    appServicePlanId: appServicePlanModule.outputs.appServicePlanId
+    containerRegistryName: containerRegistryName
+    dockerRegistryImageName: containerRegistryImageName
+    dockerRegistryImageVersion: containerRegistryImageVersion
+    dockerRegistryServerUserName: keyVaultReference.getSecret(adminUsernameSecretName)
+    dockerRegistryServerPassword: keyVaultReference.getSecret(adminPasswordSecretName)
+
+  }
+}
