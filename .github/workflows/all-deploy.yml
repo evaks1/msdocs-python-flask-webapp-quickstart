@@ -37,12 +37,13 @@ jobs:
             --resource-group ${{ env.RESOURCE_GROUP_DEV }} \
             --template-file ./modules/keyVault.bicep \
             --parameters ./main.parameters.json
-      - name: Deploy Main Infrastructure
-        run: |
-          az deployment group create \
-            --resource-group ${{ env.RESOURCE_GROUP_DEV }} \
-            --template-file ./main.bicep \
-            --parameters ./main.parameters.json
+      - name: Deploy
+        uses: azure/arm-deploy@v2
+        with:
+            subscriptionId: ${{ env.SUBSCRIPTION_ID_DEV }}
+            resourceGroupName: ${{ env.RESOURCE_GROUP_DEV }}
+            template: ./main.bicep
+            parameters: ./main.parameters.json
 
   build-and-deploy:
     runs-on: ubuntu-latest
