@@ -3,13 +3,13 @@
   "contentVersion": "1.0.0.0",
   "parameters": {
     "containerRegistryName": {
-      "value": "ELSACR"
+      "value": "ELSACRexercise"
     },
     "appServicePlanName": {
-      "value": "ELSAppServicePlan"
+      "value": "ELSexerciseAppServicePlan"
     },
     "webAppName": {
-      "value": "ELSWEBAPP"
+      "value": "ELSexerciseWEBAPP"
     },
     "location": {
       "value": "westeurope"
