@@ -34,7 +34,7 @@ resource webApp 'Microsoft.Web/sites@2021-03-01' = {
   properties: {
     serverFarmId: serverFarmResourceId
     siteConfig: {
-      linuxFxVersion: 'DOCKER|${dockerRegistryServerUrl}/${containerRegistryImageName}:${containerRegistryImageVersion}'
+      linuxFxVersion: 'DOCKER|${replace(dockerRegistryServerUrl, 'https://', '')}/${containerRegistryImageName}:${containerRegistryImageVersion}'
       appCommandLine: ''
       appSettings: [
         {
