@@ -9,7 +9,7 @@ env:
   RESOURCE_GROUP_DEV: BCSAI2024-DEVOPS-STUDENTS-A-DEV
   SUBSCRIPTION_ID_DEV: e0b9cada-61bc-4b5a-bd7a-52c606726b3b
   REGISTRY_LOGIN_SERVER: elsacrexercise.azurecr.io     # Replace with your ACR login server if different
-  IMAGE_BASE_NAME: ELSimage                     # As per main.parameters.json
+  IMAGE_BASE_NAME: elsimage                     # As per main.parameters.json
   WEBAPP_NAME: ELSexerciseWEBAPP                # As per main.parameters.json
 
 jobs:
