@@ -1,26 +1,31 @@
-@description('Name of the Web App')
+// webApp.bicep
+
+@description('Name of the Azure Web App')
 param name string
 
-@description('Location for the Web App')
+@description('Location for the Azure Web App')
 param location string
 
 @description('Resource ID of the App Service Plan')
 param serverFarmResourceId string
 
-@description('Container Registry URL')
-param containerRegistryUrl string
+@description('Docker Registry Server URL')
+param dockerRegistryServerUrl string
 
-@description('Container Image Name')
-param containerImageName string
+@description('Docker Registry Server Username')
+@secure()
+param dockerRegistryServerUserName string
 
-@description('Container Image Version')
-param containerImageVersion string
+@description('Docker Registry Server Password')
+@secure()
+param dockerRegistryServerPassword string
 
-@description('Docker Registry Username')
-param dockerRegistryUsername string
+@description('Name of the container image')
+param containerRegistryImageName string
 
-@description('Docker Registry Password')
-param dockerRegistryPassword string
+@description('Version of the container image')
+param containerRegistryImageVersion string
+
 
 resource webApp 'Microsoft.Web/sites@2021-03-01' = {
   name: name
@@ -29,7 +34,7 @@ resource webApp 'Microsoft.Web/sites@2021-03-01' = {
   properties: {
     serverFarmId: serverFarmResourceId
     siteConfig: {
-      linuxFxVersion: 'DOCKER|${containerRegistryUrl}/${containerImageName}:${containerImageVersion}'
+      linuxFxVersion: 'DOCKER|${dockerRegistryServerUrl}/${containerRegistryImageName}:${containerRegistryImageVersion}'
       appCommandLine: ''
       appSettings: [
         {
@@ -38,16 +43,17 @@ resource webApp 'Microsoft.Web/sites@2021-03-01' = {
         }
         {
           name: 'DOCKER_REGISTRY_SERVER_URL'
-          value: containerRegistryUrl
+          value: dockerRegistryServerUrl
         }
         {
           name: 'DOCKER_REGISTRY_SERVER_USERNAME'
-          value: dockerRegistryUsername
+          value: dockerRegistryServerUserName
         }
         {
           name: 'DOCKER_REGISTRY_SERVER_PASSWORD'
-          value: dockerRegistryPassword
+          value: dockerRegistryServerPassword
         }
+        
       ]
     }
   }

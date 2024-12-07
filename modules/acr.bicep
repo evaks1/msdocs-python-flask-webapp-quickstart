@@ -1,3 +1,5 @@
+// containerRegistry.bicep
+
 @description('Name of the Azure Container Registry')
 param name string
 
@@ -7,7 +9,23 @@ param location string
 @description('Enable admin user for the Azure Container Registry')
 param acrAdminUserEnabled bool
 
-resource acr 'Microsoft.ContainerRegistry/registries@2022-12-01'= {
+@description('Resource ID of the Key Vault for storing credentials')
+param adminCredentialsKeyVaultResourceId string
+
+@description('Secret name for ACR username')
+param adminCredentialsKeyVaultSecretUserName string
+
+@description('Secret name for ACR password')
+param adminCredentialsKeyVaultSecretUserPassword1 string
+
+@description('Secret name for ACR password 2')
+param adminCredentialsKeyVaultSecretUserPassword2 string
+
+resource keyVault 'Microsoft.KeyVault/vaults@2021-10-01' existing = {
+  name: last(split(adminCredentialsKeyVaultResourceId, '/'))
+}
+
+resource acr 'Microsoft.ContainerRegistry/registries@2022-12-01' = {
   name: name
   location: location
   sku: {
@@ -18,6 +36,25 @@ resource acr 'Microsoft.ContainerRegistry/registries@2022-12-01'= {
   }
 }
 
+resource secretUsername 'Microsoft.KeyVault/vaults/secrets@2023-02-01' = {
+  name: '${keyVault.name}/${adminCredentialsKeyVaultSecretUserName}'
+  properties: {
+    value: acr.listCredentials().username
+  }
+}
+
+resource secretPassword1 'Microsoft.KeyVault/vaults/secrets@2023-02-01' = {
+  name: '${keyVault.name}/${adminCredentialsKeyVaultSecretUserPassword1}'
+  properties: {
+    value: acr.listCredentials().passwords[0].value
+  }
+}
+
+resource secretPassword2 'Microsoft.KeyVault/vaults/secrets@2023-02-01' = {
+  name: '${keyVault.name}/${adminCredentialsKeyVaultSecretUserPassword2}'
+  properties: {
+    value: acr.listCredentials().passwords[1].value
+  }
+}
+
 output acrLoginServer string = acr.properties.loginServer
-output acrUsername string = acr.listCredentials().username
-output acrPassword string = acr.listCredentials().passwords[0].value
