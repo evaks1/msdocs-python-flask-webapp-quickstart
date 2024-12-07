@@ -13,10 +13,10 @@ env:
   USER_ALIAS: Els
   LOCATION: North Europe
   ACR_NAME: ELSACRexercise                       # Name of your Azure Container Registry
-  REGISTRY_LOGIN_SERVER: elsacr.azurecr.io       # ACR login server (e.g., yourregistry.azurecr.io)
+  REGISTRY_LOGIN_SERVER: ELSACRexercise.azurecr.io       # ACR login server (e.g., yourregistry.azurecr.io)
   IMAGE_BASE_NAME: elsimage                      # As per main.bicep
   WEBAPP_NAME: ELSexerciseWEBAPP                 # As per main.bicep
-  KEY_VAULT_NAME: elskeyvault2025                # Name of your Key Vault
+  KEY_VAULT_NAME: elskeyvault2026                # Name of your Key Vault
   ACR_USERNAME_SECRET: adminUsernameSecretName
   ACR_PASSWORD_SECRET: adminPasswordSecretName
 

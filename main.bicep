@@ -40,6 +40,9 @@ module keyVault 'modules/keyVault.bicep' = {
 
 module containerRegistryModule './modules/acr.bicep' = {
   name: containerRegistryName
+  dependsOn: [
+    keyVault
+  ]
   params: {
     keyVaultResourceId: keyVault.outputs.resourceId
     keyVaultSecreNameAdminUsername: adminUsernameSecretName
@@ -72,6 +75,5 @@ module webAppModule './modules/webApp.bicep' = {
     dockerRegistryImageVersion: containerRegistryImageVersion
     dockerRegistryServerUserName: keyVaultReference.getSecret(adminUsernameSecretName)
     dockerRegistryServerPassword: keyVaultReference.getSecret(adminPasswordSecretName)
-
   }
 }
