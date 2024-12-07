@@ -16,7 +16,7 @@ env:
   REGISTRY_LOGIN_SERVER: elsacr.azurecr.io       # ACR login server (e.g., yourregistry.azurecr.io)
   IMAGE_BASE_NAME: elsimage                      # As per main.bicep
   WEBAPP_NAME: ELSexerciseWEBAPP                 # As per main.bicep
-  KEY_VAULT_NAME: ELSKeyvault202                # Name of your Key Vault
+  KEY_VAULT_NAME: ELSKeyvault20                # Name of your Key Vault
   KEY_VAULT_SECRET_NAME_ACR_USERNAME: ACR-Username
   KEY_VAULT_SECRET_NAME_ACR_PASSWORD: ACR-Password1
 

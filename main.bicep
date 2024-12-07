@@ -7,6 +7,7 @@ param webAppName string
 param containerRegistryImageName string
 param containerRegistryImageVersion string
 
+
 // Deploy Key Vault
 module keyVaultModule 'modules/keyVault.bicep' = {
   name: 'keyVaultDeployment'
