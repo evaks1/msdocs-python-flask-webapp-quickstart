@@ -35,7 +35,7 @@ jobs:
         run: |
           az deployment group create \
             --resource-group ${{ env.RESOURCE_GROUP_DEV }} \
-            --template-file ./keyVault.bicep \
+            --template-file ./modules/keyVault.bicep \
             --parameters ./main.parameters.json
       - name: Deploy Main Infrastructure
         run: |
