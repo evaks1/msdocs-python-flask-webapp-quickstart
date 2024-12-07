@@ -11,7 +11,7 @@ param containerRegistryImageVersion string
 module keyVaultModule 'modules/keyVault.bicep' = {
   name: 'keyVaultDeployment'
   params: {
-    name: 'ELSkeyVault'
+    name: 'ELSKeyVault2024'
     location: location
     roleAssignments: [
       {
