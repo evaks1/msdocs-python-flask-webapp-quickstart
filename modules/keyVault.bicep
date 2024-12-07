@@ -1,13 +1,10 @@
-// key-vault.bicep
+// modules/keyVault.bicep
 
 @description('Name of the Azure Key Vault')
 param name string
 
 @description('Location for the Azure Key Vault')
 param location string
-
-@description('Enable Key Vault for deployment')
-param enableVaultForDeployment bool
 
 @description('Role assignments for the Key Vault')
 param roleAssignments array

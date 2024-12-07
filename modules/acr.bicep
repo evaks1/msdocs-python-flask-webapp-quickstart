@@ -1,4 +1,4 @@
-// modules/containerRegistry.bicep
+// modules/acr.bicep
 
 @description('Name of the Azure Container Registry')
 param name string
@@ -10,7 +10,7 @@ param location string
 param acrAdminUserEnabled bool
 
 @description('Resource ID of the Key Vault for storing credentials')
-param adminCredentialsKeyVaultResourceId string
+param keyVaultId string
 
 @description('Secret name for ACR username')
 @secure()
@@ -24,9 +24,8 @@ param adminCredentialsKeyVaultSecretUserPassword1 string
 @secure()
 param adminCredentialsKeyVaultSecretUserPassword2 string
 
-// Reference the existing Key Vault
-resource keyVault 'Microsoft.KeyVault/vaults@2021-10-01' existing = {
-  id: adminCredentialsKeyVaultResourceId
+resource keyVault 'Microsoft.KeyVault/vaults@2021-10-01' existing = if (!empty(keyVaultId)) {
+  name: last(split((!empty(keyVaultId) ? keyVaultId : 'dummyVault'), '/'))!
 }
 
 // Deploy Azure Container Registry
@@ -43,7 +42,7 @@ resource acr 'Microsoft.ContainerRegistry/registries@2022-12-01' = {
 
 // Store ACR username in Key Vault
 resource secretUsername 'Microsoft.KeyVault/vaults/secrets@2023-02-01' = {
-  name: '${adminCredentialsKeyVaultSecretUserName}'
+  name: adminCredentialsKeyVaultSecretUserName
   parent: keyVault
   properties: {
     value: acr.listCredentials().username
@@ -52,7 +51,7 @@ resource secretUsername 'Microsoft.KeyVault/vaults/secrets@2023-02-01' = {
 
 // Store ACR password1 in Key Vault
 resource secretPassword1 'Microsoft.KeyVault/vaults/secrets@2023-02-01' = {
-  name: '${adminCredentialsKeyVaultSecretUserPassword1}'
+  name: adminCredentialsKeyVaultSecretUserPassword1
   parent: keyVault
   properties: {
     value: acr.listCredentials().passwords[0].value
@@ -61,7 +60,7 @@ resource secretPassword1 'Microsoft.KeyVault/vaults/secrets@2023-02-01' = {
 
 // Store ACR password2 in Key Vault
 resource secretPassword2 'Microsoft.KeyVault/vaults/secrets@2023-02-01' = {
-  name: '${adminCredentialsKeyVaultSecretUserPassword2}'
+  name: adminCredentialsKeyVaultSecretUserPassword2
   parent: keyVault
   properties: {
     value: acr.listCredentials().passwords[1].value

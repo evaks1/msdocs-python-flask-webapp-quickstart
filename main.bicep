@@ -13,7 +13,6 @@ module keyVaultModule 'modules/keyVault.bicep' = {
   params: {
     name: 'ELSKeyVault'
     location: location
-    enableVaultForDeployment: true
     roleAssignments: [
       {
         principalId: '7200f83e-ec45-4915-8c52-fb94147cfe5a'
@@ -31,7 +30,7 @@ module containerRegistryModule 'modules/acr.bicep' = {
     name: containerRegistryName
     location: location
     acrAdminUserEnabled: false
-    adminCredentialsKeyVaultResourceId: keyVaultModule.outputs.keyVaultId
+    keyVaultId: keyVaultModule.outputs.keyVaultId
     adminCredentialsKeyVaultSecretUserName: 'ACR-Username'
     adminCredentialsKeyVaultSecretUserPassword1: 'ACR-Password1'
     adminCredentialsKeyVaultSecretUserPassword2: 'ACR-Password2'
