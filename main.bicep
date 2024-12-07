@@ -45,8 +45,8 @@ module containerRegistryModule './modules/acr.bicep' = {
   ]
   params: {
     keyVaultResourceId: keyVault.outputs.resourceId
-    keyVaultSecreNameAdminUsername: adminUsernameSecretName
-    keyVaultSecreNameAdminPassword: adminPasswordSecretName
+    keyVaultSecretNameAdminUsername: adminUsernameSecretName
+    keyVaultSecretNameAdminPassword: adminPasswordSecretName
     containerRegistryName: containerRegistryName
     location: location
 
